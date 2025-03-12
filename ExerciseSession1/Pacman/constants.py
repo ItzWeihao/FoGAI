@@ -1,0 +1,27 @@
+####### Map #######
+TILEWIDTH = 16
+TILEHEIGHT = 16
+NROWS = 36
+NCOLS = 28
+SCREENWIDTH = NCOLS*TILEWIDTH
+SCREENHEIGHT = NROWS*TILEHEIGHT
+SCREENSIZE = (SCREENWIDTH, SCREENHEIGHT)
+
+####### Colours #######
+BLACK = (0, 0, 0)
+YELLOW = (255, 255, 0)
+RED = (255, 0, 0)
+WHITE = (255, 255, 255)
+
+####### Movement #######
+STOP = 0
+UP = 1
+DOWN = -1
+LEFT = 2
+RIGHT = -2
+
+####### Character(s) #######
+PACMAN = 0
+PELLET = 1
+POWERPELLET = 2
+GHOST = 3
