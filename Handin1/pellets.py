@@ -12,6 +12,17 @@ class Pellet(object):
         self.collideRadius = 2 * TILEWIDTH / 16
         self.points = 10
         self.visible = True
+        # Find the closest node to this pellet
+        self.node = self.findClosestNode(nodes)
+
+    def findClosestNode(self, nodes):
+        if not nodes.nodesLUT:  # Check if nodes are empty
+            print("Error: No nodes found in nodesLUT!")
+            return None
+
+        closest_node = min(nodes.nodesLUT.values(), key=lambda n: self.position.distance(n.position))
+        print(f"Pellet at {self.position} assigned to node at {closest_node.position}")
+        return closest_node
 
     def render(self, screen):
         if self.visible:

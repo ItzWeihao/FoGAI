@@ -17,7 +17,9 @@ class Pacman(Entity):
         self.setBetweenNodes(LEFT)
         self.alive = True
         self.sprites = PacmanSprites(self)
+        self.node = node
         self.nodes = nodes
+        self.previous_node = None  # Track previous node to prevent backtracking
 
     def reset(self):
         Entity.reset(self)
@@ -40,35 +42,44 @@ class Pacman(Entity):
     def setFSM(self, pellets, ghosts, nodes):
         self.fsm = PacmanAI(self, pellets, ghosts, nodes)
 
-    def update(self, dt):	
+    def update(self, dt):
         self.sprites.update(dt)
 
-        # print(self.position)
-
-        self.position += self.directions[self.direction]*self.speed*dt
-        # direction = self.getValidKey()
-        if hasattr(self, "fsm"):
-            self.fsm.update()
-
-        # print(self.direction)
+        # Step 1: Move in the current direction at controlled speed
+        movement = self.directions[self.direction] * self.speed * dt
+        self.position += movement
 
         if self.overshotTarget():
+            print(f"Pac-Man reached node at {self.target.position}")
+
+            # Align Pac-Man with the target node
+            self.position = self.target.position.copy()
             self.node = self.target
+            self.target = None  # Clear the target
+
+            # ✅ AI updates Pac-Man's direction at every node
+            if hasattr(self, "fsm") and self.fsm:
+                self.fsm.execute(self)  # Recalculate movement immediately
+
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
 
             self.target = self.getNewTarget(self.direction)
 
             if self.target is not self.node:
-                # validDirectionsSize = len(self.get_valid_directions())
-                # randomInt = random.randint(0, validDirectionsSize - 1)
-                self.direction = self.direction
-                # print(self.get_valid_directions())
+                self.direction = self.direction  # Keeping the same direction if valid
             else:
                 self.target = self.getNewTarget(self.direction)
 
+            # 🚨 Fix: Ensure Pac-Man picks a new direction when hitting a wall
             if self.target is self.node:
-                self.direction = STOP
+                print(f"Pac-Man hit a wall at {self.node.position}. AI selecting a new direction.")
+                self.direction = STOP  # Temporarily stop movement
+
+                if self.fsm:  # Ensure AI re-evaluates movement
+                    self.fsm.execute(self)  # Call AI to select a new path
+                    print(f"Pac-Man AI set new direction: {self.direction}")
+
             self.setPosition()
         else:
             if self.oppositeDirection(self.direction):
@@ -84,7 +95,16 @@ class Pacman(Entity):
             return LEFT
         if key_pressed[K_RIGHT]:
             return RIGHT
-        return STOP  
+        return STOP
+
+    def getValidDirections(self):
+        """ Returns a list of valid movement directions based on node neighbors. """
+        valid_moves = [direction for direction, node in self.node.neighbors.items() if node is not None]
+
+        if not valid_moves:
+            print(f"Pac-Man at {self.node.position} is stuck! No valid moves.")
+
+        return valid_moves
 
     def eatPellets(self, pelletList):
         for pellet in pelletList:
@@ -117,14 +137,3 @@ class Pacman(Entity):
 
         # If no valid neighbor found, stop
         self.direction = STOP
-
-    def get_valid_directions(self):
-        """Returns a list of valid movement directions for Pac-Man."""
-        valid_directions = []
-
-        # Check all possible movement directions (UP, DOWN, LEFT, RIGHT)
-        for direction, neighbor in self.node.neighbors.items():
-            if neighbor is not None:  # If there is a valid path in this direction
-                valid_directions.append(direction)
-
-        return valid_directions  # Returns a list like [LEFT, UP]
