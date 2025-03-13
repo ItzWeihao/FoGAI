@@ -57,7 +57,7 @@ class Pacman(Entity):
             self.node = self.target
             self.target = None  # Clear the target
 
-            # ✅ AI updates Pac-Man's direction at every node
+            # AI updates Pac-Man's direction at every node
             if hasattr(self, "fsm") and self.fsm:
                 self.fsm.execute(self)  # Recalculate movement immediately
 
@@ -71,7 +71,7 @@ class Pacman(Entity):
             else:
                 self.target = self.getNewTarget(self.direction)
 
-            # 🚨 Fix: Ensure Pac-Man picks a new direction when hitting a wall
+            # Ensure Pac-Man picks a new direction when hitting a wall
             if self.target is self.node:
                 print(f"Pac-Man hit a wall at {self.node.position}. AI selecting a new direction.")
                 self.direction = STOP  # Temporarily stop movement
