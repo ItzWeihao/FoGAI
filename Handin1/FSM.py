@@ -81,6 +81,7 @@ class Search(State):
                     print(f"Path Length: {len(path)}")
 
                     if not path:
+                        pacman.direction = STOP
                         print("🚨 A* failed to find a path!")
 
                     if path and (shortest_path is None or len(path) < len(shortest_path)):
