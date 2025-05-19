@@ -9,7 +9,7 @@ from FSM import PacmanAI
 from FSM import Search
 
 class Pacman(Entity):
-    def __init__(self, node, nodes):
+    def __init__(self, node, nodes, pellets):
         Entity.__init__(self, node)
         self.name = PACMAN    
         self.color = YELLOW
@@ -19,6 +19,7 @@ class Pacman(Entity):
         self.sprites = PacmanSprites(self)
         self.node = node
         self.nodes = nodes
+        self.pellets = pellets
         self.previous_node = None  # Track previous node to prevent backtracking
 
     def reset(self):
@@ -47,7 +48,6 @@ class Pacman(Entity):
 
         # Step 1: Move in the current direction at controlled speed
         movement = self.directions[self.direction] * self.speed * dt
-        self.position += movement
 
         if self.overshotTarget():
             print(f"Pac-Man reached node at {self.target.position}")
@@ -124,16 +124,3 @@ class Pacman(Entity):
         if dSquared <= rSquared:
             return True
         return False
-
-    def move_to(self, target_position):
-        """Move Pac-Man towards the next node in the path."""
-        if target_position in self.node.neighbors.values():
-            # Find the direction that leads to the target node
-            for direction, neighbor in self.node.neighbors.items():
-                if neighbor == target_position:
-                    self.direction = direction
-                    self.target = target_position
-                    return
-
-        # If no valid neighbor found, stop
-        self.direction = STOP

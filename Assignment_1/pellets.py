@@ -4,7 +4,7 @@ from constants import *
 import numpy as np
 
 class Pellet(object):
-    def __init__(self, row, column, nodes):
+    def __init__(self, row, column):
         self.name = PELLET
         self.position = Vector2(column*TILEWIDTH, row*TILEHEIGHT)
         self.color = WHITE
@@ -12,18 +12,7 @@ class Pellet(object):
         self.collideRadius = 2 * TILEWIDTH / 16
         self.points = 10
         self.visible = True
-        # Find the closest node to this pellet
-        # self.node = self.findClosestNode(nodes)
-
-    def findClosestNode(self, nodes):
-        if not nodes.nodesLUT:  # Check if nodes are empty
-            print("Error: No nodes found in nodesLUT!")
-            return None
-
-        closest_node = min(nodes.nodesLUT.values(), key=lambda n: self.position.distance(n.position))
-        print(f"Pellet at {self.position} assigned to node at {closest_node.position}")
-        return closest_node
-
+        
     def render(self, screen):
         if self.visible:
             adjust = Vector2(TILEWIDTH, TILEHEIGHT) / 2
@@ -32,15 +21,14 @@ class Pellet(object):
 
 
 class PowerPellet(Pellet):
-    def __init__(self, row, column, nodes):
-        Pellet.__init__(self, row, column, nodes)
+    def __init__(self, row, column):
+        Pellet.__init__(self, row, column)
         self.name = POWERPELLET
         self.radius = int(8 * TILEWIDTH / 16)
         self.points = 50
         self.flashTime = 0.2
         self.timer= 0
-
-
+        
     def update(self, dt):
         self.timer += dt
         if self.timer >= self.flashTime:
@@ -49,24 +37,24 @@ class PowerPellet(Pellet):
 
 
 class PelletGroup(object):
-    def __init__(self, pelletfile, nodes):
+    def __init__(self, pelletfile):
         self.pelletList = []
         self.powerpellets = []
-        self.createPelletList(pelletfile, nodes)
+        self.createPelletList(pelletfile)
         self.numEaten = 0
 
     def update(self, dt):
         for powerpellet in self.powerpellets:
             powerpellet.update(dt)
                 
-    def createPelletList(self, pelletfile, nodes):
+    def createPelletList(self, pelletfile):
         data = self.readPelletfile(pelletfile)        
         for row in range(data.shape[0]):
             for col in range(data.shape[1]):
                 if data[row][col] in ['.', '+']:
-                    self.pelletList.append(Pellet(row, col, nodes))
+                    self.pelletList.append(Pellet(row, col))
                 elif data[row][col] in ['P', 'p']:
-                    pp = PowerPellet(row, col, nodes)
+                    pp = PowerPellet(row, col)
                     self.pelletList.append(pp)
                     self.powerpellets.append(pp)
                     

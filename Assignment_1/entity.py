@@ -3,7 +3,6 @@ from pygame.locals import *
 from vector import Vector2
 from constants import *
 from random import randint
-from algorithms import aStar
 
 class Entity(object):
     def __init__(self, node):

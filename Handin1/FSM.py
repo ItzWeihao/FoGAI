@@ -5,6 +5,7 @@ from vector import Vector2
 from constants import *
 import math
 import pygame
+import random
 
 def renderPath(screen, pacman):
     """ Draw the A* path for Pac-Man """
@@ -35,92 +36,16 @@ class State:
 
 class Search(State):
     def execute(self, pacman):
-        print("========= AI searching for nearest pellet... =========")  # Debug log
-
-        # Get valid directions from Pac-Man
-        valid_moves = pacman.getValidDirections()
-        print(f"Valid moves: {valid_moves}")  # Debug log
-
-        if not valid_moves:
-            print("Pac-Man has no valid moves! AI stopping.")
-            pacman.direction = STOP
-            return
-
-        # Find the closest pellet that Pac-Man can reach
-        if pacman.pellets.pelletList:
-            valid_pellets = [
-                p for p in pacman.pellets.pelletList if aStar(pacman.node, p.node)
-            ]
-
-            if not valid_pellets:
-                print("A* Warning: No valid paths to any pellet!")
-                return
-
-            nearest_pellet = min(valid_pellets, key=lambda p: euclidianDistance(pacman.node, p.node))
-            print(f"Target pellet at {nearest_pellet.position}, Node: {nearest_pellet.node.position}, Pacman: {pacman.position}")
-
-            # Step 3: Compute paths for each valid move
-            neighbor_valid_move = [direction for direction, node in nearest_pellet.node.neighbors.items() if node is not None]
-            print(f"Neighbor valid moves: {neighbor_valid_move}")
-
-            best_direction = None
-            shortest_path = None
-            last_node = pacman.previous_node  # Track the last node visited
-
-            for direction in valid_moves:
-                if nearest_pellet.node.neighbors[-direction] is not pacman.node:
-                    continue
-
-                next_node = pacman.node.neighbors[direction]
-
-                if next_node and (next_node != last_node or len(valid_moves) == 1):  # Avoid going back unless necessary
-                    print(f"🔍 Running A* from {pacman.node.position} to {nearest_pellet.node.position}")
-
-                    path = aStar(pacman.node, nearest_pellet.node)
-
-                    print(f"Path Length: {len(path)}")
-
-                    if not path:
-                        pacman.direction = STOP
-                        print("🚨 A* failed to find a path!")
-
-                    if path and (shortest_path is None or len(path) < len(shortest_path)):
-                        # print(f"Nearest Pellet Node: {nearest_pellet.node.neighbors.position}")
-                        best_direction = direction
-                        shortest_path = path  # Store the best path
-
-            # Set Pac-Man’s direction to the best option
-            if best_direction is not None:
-                pacman.previous_node = pacman.node
-                pacman.direction = best_direction
-                pacman.path = shortest_path  # Store path for rendering
-                print(f"AI setting Pac-Man direction to: {best_direction}")
-                print(f"AI calculated path: {[node.position for node in shortest_path]}")
-                return
-            elif best_direction is None and shortest_path is not None:
-                if len(shortest_path) > 2:
-                    best_direction = next((direction for direction in valid_moves if
-                                           pacman.node.neighbors[direction] == shortest_path[2]),
-                                          None)
-                else:
-                    return
-            else:
-                print("=== AI found a path but no valid forward direction! ===")
-                print(f"Pac-Man at Node: {pacman.node.position}")
-                print(f"Valid Moves at this Node: {valid_moves}")
-                print(f"Target Pellet: {nearest_pellet.node.position}")
-                print(f"Calculated Path: {[node.position for node in shortest_path] if shortest_path else 'No path'}")
-
-        # If there are no more pellets, stop moving
-        if not pacman.pellets.pelletList:
-            print("No more pellets. AI stopping.")
-            pacman.direction = STOP
-
         # Check if a ghost is too close and trigger flee mode
         # Right now does nothing
-        if any(g.node.position.distance(pacman.position) < 30 and g.mode.current is not FREIGHT for g in pacman.ghosts):
+        # distance = (pacman.position - pacman.ghost.position).magnitudeSquared()
+        if any((pacman.position - g.position).magnitudeSquared() < 10000 and g.mode.current is not FREIGHT or g.mode.current is not SPAWN for g in
+               pacman.ghosts):
             print("Ghost detected nearby! Switching to Flee mode.")
-            pacman.change_state(Flee())
+            pacman.fsm.change_state(Flee())
+
+        print("========= AI searching for nearest pellet... =========")  # Debug log
+        pacman.fsm.getNearestPellet()
 
 
 class Eat(State):
@@ -131,29 +56,36 @@ class Eat(State):
             if edible_ghosts:
                 nearest_ghost = min(edible_ghosts, key=lambda g: pacman.pacman.position.distance(g.position))
                 path = aStar(pacman.pacman.node, nearest_ghost)
-                pacman.follow_path(path)
+                pacman.fsm.follow_path(path)
             else:
-                pacman.change_state(Search())
+                pacman.fsm.change_state(Search())
         else:
             nearest_pellet = min(pacman.pellets.pelletList,
                                  key=lambda p: pacman.pacman.position.distance(p.position))
             path = aStar(pacman.pacman.node, nearest_pellet)
-            pacman.follow_path(path)
+            pacman.fsm.follow_path(path)
 
         if any(g.node.position.distance(pacman.pacman.position) < 50 and g.mode.current is not FREIGHT for g in pacman.ghosts):
-            pacman.change_state(Flee())
+            pacman.fsm.change_state(Flee())
 
 
 class Flee(State):
     def execute(self, pacman):
         print("Flee")
-        safe_spot = max(pacman.pacman.nodes.nodesLUT.values(), key=lambda n: min(g.position.distance(n.position) for g in pacman.ghosts))
-        path = aStar(pacman.pacman.node, safe_spot)
-        if path:
-            pacman.follow_path(path)
+        distances = []
+        for direction in directions:
+            vec = self.node.position + self.directions[direction] * TILEWIDTH - self.currentFleeTarget.position
+            distances.append(vec.magnitudeSquared())
+        index = distances.index(max(distances))
+        return directions[index]
 
-        if all(g.node.position.distance(pacman.pacman.position) > 100 or g.mode.current is FREIGHT for g in pacman.ghosts):
-            pacman.change_state(Search())
+        safe_spot = max(pacman.nodes.nodesLUT.values(), key=lambda n: max(g.position.distance(n.position) for g in pacman.ghosts))
+        path = aStar(pacman.node, safe_spot)
+
+        pacman.fsm.follow_path(path)
+
+        if all(g.node.position.distance(pacman.position) > 500 or g.mode.current is FREIGHT for g in pacman.ghosts):
+            pacman.fsm.change_state(Search())
 
 
 class PacmanAI:
@@ -164,6 +96,67 @@ class PacmanAI:
         self.ghosts = ghosts
         self.nodes = nodes
         self.path = []
+        self.currentSeekTarget = getNearestPellet()
+
+    def checkForNearbyGhost(self):
+        closestGhost = None
+        closestDistance = 1000000
+
+        for ghost in self.ghosts:
+            distance = (self.position - ghost.position).magnitudeSquared()
+            if distance < closestDistance:
+                closestGhost = ghost
+                closestDistance = distance
+
+        if closestDistance < 10000:
+            self.currentFleeTarget = closestGhost
+            self.directionMethod = self.fleeDirection
+        else:
+            self.directionMethod = self.seekDirection
+
+    def getNearestPellet(self):
+        closestPellet = None
+        closestDistance = 1000000
+
+        for pellet in self.pellets.pelletList:
+            distance = (self.position - pellet.position).magnitudeSquared()
+            if distance < closestDistance:
+                closestPellet = pellet
+                closestDistance = distance
+
+        self.currentSeekTarget = closestPellet
+        return closestPellet
+
+    def determineNextDirection(self, directions):
+        # Get the shortest path between pacman's current movement target and the last target of the current target
+        self.path = self.getAStarPathToPellet()
+        # Get pacman's current movement target, then converts it to a node object
+        pacmanTarget = self.target
+        pacmanTarget = self.nodes.getNodeFromLUTNode(pacmanTarget)
+        self.path.append(pacmanTarget)
+        nextTargetNode = path[1]
+        # Compares coordinates of pacman's target movement node and the next target node
+        # if the x-coordinate of pacman's target movement node is greater than the x-coordinate of the next target node
+        if pacmanTarget[0] > nextTargetNode[0] and 2 in directions: #Left
+            return 2
+        # if the x-coordinate of pacman's target movement node is less than the x-coordinate of the next target node
+        if pacmanTarget[0] < nextTargetNode[0] and -2 in directions: #Right
+            return -2
+        # if the y-coordinate of pacman's target movement node is greater than the y-coordinate of the next target node
+        if pacmanTarget[1] > nextTargetNode[1] and 1 in directions: #Up
+            return 1
+        # if the y-coordinate of pacman's target movement node is less than the y-coordinate of the next target node
+        if pacmanTarget[1] < nextTargetNode[1] and -1 in directions: #Down
+            return -1
+        else:
+            print(self.currentSeekTarget.direction)
+            print(directions)
+            # return the opposite direction of the current target's direction is in the valid directions
+            if -1 * self.currentSeekTarget.direction in directions:
+                return -1 * self.currentSeekTarget.direction
+            else:
+            # else return a random direction from the valid directions
+                return choice(directions)
 
     def change_state(self, state):
         self.state.exit(self)
@@ -172,39 +165,6 @@ class PacmanAI:
 
     def update(self):
         self.state.execute(self)
-
-    def follow_path(self, path):
-        if not path:
-            print("A* Warning: Trying to follow an empty path!")
-            return
-
-            # Step 1: Store the path if it's the first time following it
-        if not self.path:
-            self.path = path[:]  # Copy the full path
-
-        print(f"Full path length: {len(self.path)}")
-
-        # Step 2: Get the next node
-        next_node = self.path[0]
-        next_next_node = self.path[1] if len(self.path) > 1 else None
-
-        print(f"Next node: {next_node.position}")
-
-        # Step 3: Get valid movement options
-        valid_directions = self.pacmanPlayer.get_valid_directions()
-
-        # Step 4: Move in a valid direction, but do NOT teleport!
-        for direction, neighbor in self.pacmanPlayer.node.neighbors.items():
-            if neighbor == next_node and direction in valid_directions:
-                self.pacmanPlayer.direction = direction
-                self.pacmanPlayer.target = next_node  # Set movement target
-                print(f"Pac-Man moving {direction} toward {next_node.position}")
-
-                # Step 5: Prepare for next move without teleporting
-                if next_next_node and next_next_node in self.pacmanPlayer.node.neighbors.values():
-                    print(f"Planning for next move to {next_next_node.position}")
-                    self.path.pop(0)  # Remove first node but keep the second
-                return
 
     def execute(self, pacman):
         """Ensure AI can be called externally (e.g., when Pac-Man hits a wall)."""
