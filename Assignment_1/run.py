@@ -51,7 +51,7 @@ class GameController(object):
         self.nodes = NodeGroup(self.mazedata.obj.name+".txt")
         self.mazedata.obj.setPortalPairs(self.nodes)
         self.mazedata.obj.connectHomeNodes(self.nodes)
-        self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart))
+        self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart), self.nodes)
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
         self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
         self.pacman.setGhost(self.ghosts)
@@ -105,7 +105,7 @@ class GameController(object):
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:
-            self.ghosts.update(dt)      
+            self.ghosts.update(dt, self.screen)
             if self.fruit is not None:
                 self.fruit.update(dt)
             self.checkPelletEvents()
@@ -114,9 +114,9 @@ class GameController(object):
 
         if self.pacman.alive:
             if not self.pause.paused:
-                self.pacman.update(dt)
+                self.pacman.update(dt, self.screen)
         else:
-            self.pacman.update(dt)
+            self.pacman.update(dt, self.screen)
 
         if self.flashBG:
             self.flashTimer += dt
@@ -160,6 +160,7 @@ class GameController(object):
             self.pellets.pelletList.remove(pellet)
             if pellet.name == POWERPELLET:
                 self.ghosts.startFreight()
+                self.pacman.setPower()
             if self.pellets.isEmpty():
                 self.flashBG = True
                 self.hideEntities()

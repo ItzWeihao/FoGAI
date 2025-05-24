@@ -49,3 +49,9 @@ class Vector2(object):
 
     def __str__(self):
         return "<"+str(self.x)+", "+str(self.y)+">"
+
+    def normalize(self):
+        mag = self.magnitudeSquared()
+        if mag == 0:
+            return Vector2(0, 0)
+        return Vector2(self.x / mag, self.y / mag)

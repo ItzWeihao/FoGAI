@@ -17,14 +17,14 @@ class Entity(object):
         self.visible = True
         self.disablePortal = False
         self.goal = None
-        self.directionMethod = self.randomDirection
+        self.directionMethod = self.goalDirection
         self.setStartNode(node)
         self.image = None
 
     def setPosition(self):
         self.position = self.node.position.copy()
 
-    def update(self, dt):
+    def update(self, dt, screen):
         self.position += self.directions[self.direction]*self.speed*dt
          
         if self.overshotTarget():

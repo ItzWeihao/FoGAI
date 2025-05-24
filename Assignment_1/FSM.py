@@ -1,4 +1,4 @@
-from constants import EAT, FLEE, HUNT
+from constants import *
 from algorithms import aStar
 
 class State(object):
@@ -34,9 +34,13 @@ class State(object):
         else:
             return []
 
-    def runState(self, pacman, closestPellet):
+    def runState(self, pacman):
         if self.state == EAT:
-            pacman.moveTowardNearest(closestPellet)
+            pacman.moveToClosestPelletPosition()
+        if self.state == FLEE:
+            pacman.fleeFromGhost()
+        if self.state == HUNT:
+            pacman.huntClosestGhost()
 
 class Transition(object):
     def __init__(self, from_state, to_state):
@@ -44,47 +48,64 @@ class Transition(object):
         self.to_state = to_state
 
     # TODO
-    def eat2flee(self):
-        pass
+    def eat2flee(self, pacman):
+        ghost_distance = pacman.closestGhostDistance
+        if ghost_distance is not None and ghost_distance < 45:
+            return True
+        return False
 
     # TODO
-    def eat2hunt(self):
-        pass
+    def eat2hunt(self, pacman):
+        ghost_distance = pacman.closestGhostDistance
+        if pacman.power and pacman.closestGhost is not None and pacman.closestGhost.mode.current == FREIGHT and ghost_distance is not None and ghost_distance < 10:
+            return True
+        return False
 
     # TODO
-    def flee2eat(self):
-        pass
+    def flee2eat(self, pacman):
+        ghost_distance = pacman.closestGhostDistance
+        if ghost_distance is not None and ghost_distance > 85:
+            return True
+        return False
 
     # TODO
-    def flee2hunt(self):
-        pass
+    def flee2hunt(self, pacman):
+        if pacman.power and pacman.closestGhost is not None and pacman.closestGhost.mode.current == FREIGHT:
+            return True
+        return False
 
     # TODO
-    def hunt2eat(self):
-        pass
+    def hunt2eat(self, pacman):
+        ghost_distance = pacman.closestGhostDistance
+        if pacman.power is False or ghost_distance is not None and ghost_distance > 10 and pacman.power is True:
+            return True
+        return False
 
     # TODO
-    def hunt2flee(self):
-        pass
+    def hunt2flee(self, pacman):
+        ghost_distance = pacman.closestGhostDistance
+        if pacman.power is False and ghost_distance is not None and ghost_distance < 45:
+            return True
+        return False
 
-    def isTriggered(self):
+    def isTriggered(self, pacman):
         # EAT change into any other state
-        if self.from_state == EAT and self.to_state == FLEE:
-            return self.eat2flee()      # Change Eating -> Fleeing
-        if self.from_state == EAT and self.to_state == HUNT:
-            return self.eat2hunt()      # Change Eating -> Hunting
+        if self.from_state == EAT and self.to_state.state == FLEE:
+            return self.eat2flee(pacman)      # Change Eating -> Fleeing
+        if self.from_state == EAT and self.to_state.state == HUNT:
+            return self.eat2hunt(pacman)      # Change Eating -> Hunting
 
         # FLEE change into any other state
-        if self.from_state == FLEE and self.to_state == EAT:
-            return self.flee2eat()      # Change Fleeing -> Eating
-        if self.from_state == FLEE and self.to_state == HUNT:
-            return self.flee2hunt()     # Change Fleeing -> Hunting
+        if self.from_state == FLEE and self.to_state.state == EAT:
+            return self.flee2eat(pacman)      # Change Fleeing -> Eating
+        if self.from_state == FLEE and self.to_state.state == HUNT:
+            return self.flee2hunt(pacman)     # Change Fleeing -> Hunting
 
         # HUNT change into any other state
-        if self.from_state == HUNT and self.to_state == EAT:
-            return self.hunt2eat()      # Change Hunting -> Eating
-        if self.from_state == HUNT and self.to_state == FLEE:
-            return self.hunt2flee()     # Change Hunting -> Fleeing
+        if self.from_state == HUNT and self.to_state.state == EAT:
+            return self.hunt2eat(pacman)      # Change Hunting -> Eating
+        if self.from_state == HUNT and self.to_state.state == FLEE:
+            return self.hunt2flee(pacman)     # Change Hunting -> Fleeing
 
 class FSM(object):
     def __init__(self, initial_state: int):
@@ -96,15 +117,28 @@ class FSM(object):
         self.flee.getOtherStates(self.eat, self.hunt)
         self.hunt.getOtherStates(self.eat, self.flee)
 
-        if initial_state == EAT:
-            initial_state = self.eat
-        elif initial_state == FLEE:
-            initial_state = self.flee
-        elif initial_state == HUNT:
-            initial_state = self.hunt
+        initial_state = self.eat
 
         self.current_state = initial_state
 
-    def updateState(self, pacman, closestPellet, closestGhost):
-        State.runState(self.current_state, pacman, closestPellet)
-        # print(self.current_state.name)
+    def updateState(self, pacman):
+        #self.current_state.runState(pacman)
+
+        #for transition in self.current_state.getTransition():
+        #    if transition.isTriggered(pacman):
+        #        print(f"Transitioning from {transition.from_state} to {transition.to_state}")
+        #        self.current_state = transition.to_state
+        #        break
+
+        print("== FSM Update ==")
+        print("Current state:", self.current_state.state)
+        self.current_state.runState(pacman)
+        print("Ghost distance:", pacman.closestGhostDistance)
+
+        for transition in self.current_state.getTransition():
+            print(f"Checking: {transition.from_state} -> {transition.to_state}")
+            print(transition.isTriggered(pacman))
+            if transition.isTriggered(pacman):
+                print(f"Transitioning from {transition.from_state} to {transition.to_state}")
+                self.current_state = transition.to_state
+                break

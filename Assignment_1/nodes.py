@@ -162,3 +162,13 @@ class NodeGroup(object):
     def render(self, screen):
         for node in self.nodesLUT.values():
             node.render(screen)
+
+    def getClosestNode(self, position):
+        closest = None
+        shortest_dist = float('inf')
+        for node in self.nodesLUT.values():
+            dist = (position - node.position).magnitude()
+            if dist < shortest_dist:
+                shortest_dist = dist
+                closest = node
+        return closest

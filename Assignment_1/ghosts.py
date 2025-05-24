@@ -23,14 +23,14 @@ class Ghost(Entity):
         self.points = 200
         self.directionMethod = self.goalDirection
 
-    def update(self, dt):
+    def update(self, dt, screen):
         self.sprites.update(dt)
         self.mode.update(dt)
         if self.mode.current is SCATTER:
             self.scatter()
         elif self.mode.current is CHASE:
             self.chase()
-        Entity.update(self, dt)
+        Entity.update(self, dt, screen)
 
     def scatter(self):
         self.goal = Vector2()
@@ -133,9 +133,9 @@ class GhostGroup(object):
     def __iter__(self):
         return iter(self.ghosts)
 
-    def update(self, dt):
+    def update(self, dt, screen):
         for ghost in self:
-            ghost.update(dt)
+            ghost.update(dt, screen)
 
     def startFreight(self):
         for ghost in self:
