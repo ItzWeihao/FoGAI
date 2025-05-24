@@ -65,7 +65,19 @@ class PelletGroup(object):
         if len(self.pelletList) == 0:
             return True
         return False
-    
+
+    def getClosestPellet(self, entity, power=False):
+        if self.pelletList or power and self.powerpellets:
+            plist = self.powerpellets if power and self.powerpellets else self.pelletList
+            closest = plist[0]
+            for p in plist:
+                diff1 = p.position - entity.position
+                diff2 = closest.position - entity.position
+                if diff2.magnitude() > diff1.magnitude():
+                    closest = p
+            return closest
+        return None
+
     def render(self, screen):
         for pellet in self.pelletList:
             pellet.render(screen)

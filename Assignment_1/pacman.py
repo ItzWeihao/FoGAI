@@ -4,16 +4,20 @@ from vector import Vector2
 from constants import *
 from entity import Entity
 from sprites import PacmanSprites
+from FSM import *
 
 class Pacman(Entity):
     def __init__(self, node):
-        Entity.__init__(self, node )
+        Entity.__init__(self, node)
         self.name = PACMAN    
         self.color = YELLOW
         self.direction = LEFT
         self.setBetweenNodes(LEFT)
         self.alive = True
         self.sprites = PacmanSprites(self)
+        self.power = False
+        self.FSM = FSM(EAT)
+        self.closestGhost = None
 
     def reset(self):
         Entity.reset(self)
@@ -30,7 +34,12 @@ class Pacman(Entity):
     def update(self, dt):	
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
-        direction = self.getValidKey()
+        self.getClosestGhostPosition()
+        #self.getClosestPelletPosition()
+        self.getNearestPellet()
+        self.FSM.updateState(self, self.closestPellet, self.closestGhost)
+        direction = self.directionMethod(self.validDirections())
+        # print(self.power)
         if self.overshotTarget():
             self.node = self.target
             if self.node.neighbors[PORTAL] is not None:
@@ -64,7 +73,11 @@ class Pacman(Entity):
         for pellet in pelletList:
             if self.collideCheck(pellet):
                 return pellet
-        return None    
+        return None
+
+    def pacmanPowered(self, power):
+        self.power = power
+        return None
     
     def collideGhost(self, ghost):
         return self.collideCheck(ghost)
@@ -75,4 +88,65 @@ class Pacman(Entity):
         rSquared = (self.collideRadius + other.collideRadius)**2
         if dSquared <= rSquared:
             return True
+        return False
+
+    def setGhost(self, ghosts):
+        self.ghosts = ghosts
+
+    def getClosestGhostPosition(self):
+        closestDistance = 100
+
+        for ghost in self.ghosts:
+            distance = (self.position - ghost.position).magnitude()
+            if ghost.mode.current != SPAWN:
+                if distance < closestDistance:
+                    self.closestGhost = ghost
+                    closestDistance = distance
+                    # print(closestGhost, ": ", closestDistance)
+
+    def setPellets(self, pellets):
+        self.pellets = pellets
+
+    def getClosestPelletPosition(self):
+        #for pellet in self.pellets.pelletList:
+        closestPellet = self.pellets.getClosestPellet(self)
+        if closestPellet is not None and closestPellet.position.magnitude() < 40 and self.power or not self.power:
+            self.directionMethod = self.goalDirection
+            self.goal = closestPellet.position
+            self.closestPellet = closestPellet
+            self.debugFollow = 0
+            # print(closestPellet)
+            return True
+        return False
+
+    def getNearestPellet(self):
+        # closestPellet = None
+        closestDistance = 1000000
+
+        for pellet in self.pellets.pelletList:
+            distance = (self.position - pellet.position).magnitude()
+            if distance < closestDistance:
+                self.closestPellet = pellet
+                closestDistance = distance
+
+        # self.currentSeekTarget = self.closestPellet
+
+    def moveTowardNearest(self, target):
+        if not target:
+            return False
+
+        closest_target = None
+        closest_dist = float('inf')
+
+        dist = (target.position - self.position).magnitude()
+        if dist < closest_dist:
+            closest_dist = dist
+            closest_target = target
+
+        if closest_target:
+            self.goal = closest_target.position
+            self.directionMethod = self.goalDirection  # Assuming goalDirection is a function
+            self.debugFollow = 0
+            return True
+
         return False

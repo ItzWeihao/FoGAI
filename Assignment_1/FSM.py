@@ -1,8 +1,10 @@
 from constants import EAT, FLEE, HUNT
+from algorithms import aStar
 
 class State(object):
     def __init__(self, state):
         self.state = state
+        self.name = state
 
     def getOtherStates(self, state1, state2):
         # EAT State
@@ -32,26 +34,36 @@ class State(object):
         else:
             return []
 
+    def runState(self, pacman, closestPellet):
+        if self.state == EAT:
+            pacman.moveTowardNearest(closestPellet)
+
 class Transition(object):
     def __init__(self, from_state, to_state):
         self.from_state = from_state
         self.to_state = to_state
 
+    # TODO
     def eat2flee(self):
         pass
 
+    # TODO
     def eat2hunt(self):
         pass
 
+    # TODO
     def flee2eat(self):
         pass
 
+    # TODO
     def flee2hunt(self):
         pass
 
+    # TODO
     def hunt2eat(self):
         pass
 
+    # TODO
     def hunt2flee(self):
         pass
 
@@ -84,14 +96,15 @@ class FSM(object):
         self.flee.getOtherStates(self.eat, self.hunt)
         self.hunt.getOtherStates(self.eat, self.flee)
 
-        if self.initial_state == EAT:
-            self.initial_state = self.eat
-        elif self.initial_state == FLEE:
-            self.initial_state = self.flee
-        elif self.initial_state == HUNT:
-            self.initial_state = self.hunt
+        if initial_state == EAT:
+            initial_state = self.eat
+        elif initial_state == FLEE:
+            initial_state = self.flee
+        elif initial_state == HUNT:
+            initial_state = self.hunt
 
-        self.current_state = self.initial_state
+        self.current_state = initial_state
 
-    def updateState(self):
-        pass
+    def updateState(self, pacman, closestPellet, closestGhost):
+        State.runState(self.current_state, pacman, closestPellet)
+        # print(self.current_state.name)
