@@ -35,6 +35,7 @@ class Pacman(Entity):
     def die(self):
         self.alive = False
         self.direction = STOP
+        # Resets some value when/if Pacman dies
         self.closestGhostDistance = None
         self.FSM.current_state = self.FSM.eat
         self.power = False
@@ -103,14 +104,17 @@ class Pacman(Entity):
             return True
         return False
 
+    # This method helps the FSM know when Pacman eats a PowerPellet and is in power
     def setPower(self):
         self.power = True
         self.power_time = 6
         self.timer = 0
 
+    # Lets pacman know ghosts
     def setGhost(self, ghosts):
         self.ghosts = ghosts
 
+    # A method that helps Pacman know where the ghosts are and the closest ghost
     def getClosestGhostPosition(self):
         self.closestGhost = None
         self.closestGhostDistance = float("inf")
@@ -125,16 +129,17 @@ class Pacman(Entity):
                     self.closestGhost = ghost
                     self.closestGhostDistance = distance
 
+    # Pacman flee from ghost behaviour
     def fleeFromGhost(self):
         if self.closestGhost is not None:
             ghost_pos = self.closestGhost.position
-            # direction_to_ghost = (ghost_pos - self.position).normalize()
 
             # If ghost is directly ahead and not already turning, reverse
             if self.target == self.closestGhost.node and not self.oppositeDirection(self.direction):
                 self.reverseDirection()
                 return True
 
+            # Figures out which ghost is the closest
             danger_ghosts = [(g, d) for g, d in self.ghostDistances if g.mode.current == CHASE]
             if danger_ghosts:
                 danger_ghost = min(danger_ghosts, key=lambda x: x[1])[0]
@@ -152,19 +157,22 @@ class Pacman(Entity):
 
         return False
 
+    # A helper to know Pellets
     def setPellets(self, pellets):
         self.pellets = pellets
 
+    # Using the known pellets we find the closest pellet for Pacman to move to
     def moveToClosestPelletPosition(self):
         closestPellet = self.pellets.getClosestPellet(self)
-        if closestPellet is not None and closestPellet.position.magnitude() < 40 and self.power or not self.power:
+        if closestPellet is not None and closestPellet.position.magnitude() < 40 or not self.power:
             self.goal = closestPellet.position
             self.directionMethod = self.goalDirection
             return True
         return False
 
+    # A method for hunting the closest ghost if the ghost is FREIGHT
     def huntClosestGhost(self):
-        freight_ghosts = [(g, d) for g, d in self.ghostDistances if g.mode.current == FREIGHT]
+        freight_ghosts = [(g, d) for g, d in self.ghostDistances if g.mode.current == FREIGHT and g.active]
         if freight_ghosts:
             target_ghost = min(freight_ghosts, key=lambda x: x[1])[0]
             self.goal = target_ghost.position

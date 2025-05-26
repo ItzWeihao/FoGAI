@@ -17,6 +17,7 @@ class Ghost(Entity):
         self.mode = ModeController(self)
         self.blinky = blinky
         self.homeNode = node
+        self.active = False
 
     def reset(self):
         Entity.reset(self)
